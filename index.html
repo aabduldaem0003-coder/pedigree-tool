@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pedigree — Clinical Pedigree Drawing Tool</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- ============================== Top bar ============================== -->
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="3" y="4" width="10" height="10" rx="1" />
+        <circle cx="24" cy="9" r="5" />
+        <path d="M13 9h6M16 9v9M8 18h16M8 18v4M24 18v4" />
+        <rect x="4" y="22" width="8" height="8" rx="1" class="fill" />
+        <circle cx="24" cy="26" r="4" />
+      </svg>
+      <span>Pedigree</span>
+    </div>
+
+    <input id="titleInput" class="title-input" data-hist type="text" spellcheck="false"
+           placeholder="Family / patient identifier (e.g. Smith family — HCM referral)">
+
+    <div class="top-actions">
+      <button id="undoBtn" type="button" title="Undo (Ctrl/⌘ Z)">
+        <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5" /><path d="M4 9h10a6 6 0 010 12h-3" /></svg>Undo
+      </button>
+      <button id="redoBtn" type="button" title="Redo (Ctrl/⌘ Shift Z)">
+        <svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5" /><path d="M20 9H10a6 6 0 000 12h3" /></svg>Redo
+      </button>
+      <span class="sep"></span>
+      <button id="newBtn" type="button" title="Start a new pedigree">New</button>
+      <button id="openBtn" type="button" title="Open a saved pedigree (.json)">Open</button>
+      <button id="saveBtn" type="button" title="Save pedigree data as .json (Ctrl/⌘ S)">Save</button>
+      <input id="fileInput" type="file" accept=".json,application/json" hidden>
+      <span class="sep"></span>
+      <label class="export-group" title="Export resolution">
+        <select id="exportScale">
+          <option value="2">2× (standard)</option>
+          <option value="3" selected>3× (high)</option>
+          <option value="4">4× (print)</option>
+        </select>
+      </label>
+      <button id="exportBtn" type="button" class="primary" title="Save the entire pedigree as a PNG image">
+        <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5" /><path d="M5 19h14" /></svg>Export PNG
+      </button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- ============================== Tool rail ============================== -->
+    <nav class="toolrail" aria-label="Drawing tools">
+      <button class="tool active" data-tool="select" title="Select / move (V)">
+        <svg viewBox="0 0 24 24"><path d="M6 3l12 9-5.5 1.2L9.5 19z" /></svg>Select
+      </button>
+
+      <div class="rail-label">Add</div>
+      <button class="tool" data-tool="male" title="Add male (M)">
+        <svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" /></svg>Male
+      </button>
+      <button class="tool" data-tool="female" title="Add female (F)">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5" /></svg>Female
+      </button>
+      <button class="tool" data-tool="unknown" title="Add individual of unknown sex (U)">
+        <svg viewBox="0 0 24 24"><path d="M12 3.5l8.5 8.5-8.5 8.5L3.5 12z" /></svg>Unknown
+      </button>
+
+      <div class="rail-label">Prenatal</div>
+      <button class="tool" data-tool="pregnancy" title="Add pregnancy (P inside symbol)">
+        <svg viewBox="0 0 24 24"><path d="M12 3.5l8.5 8.5-8.5 8.5L3.5 12z" /><path d="M10.2 16V8.2h2.6a2.3 2.3 0 010 4.6h-2.6" /></svg>Pregnancy
+      </button>
+      <button class="tool" data-tool="stillbirth" title="Add stillbirth (SB)">
+        <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /><path d="M3 21L21 3" /></svg>Stillbirth
+      </button>
+      <button class="tool" data-tool="sab" title="Add spontaneous abortion / miscarriage (SAB)">
+        <svg viewBox="0 0 24 24"><path d="M12 6l7 12H5z" /></svg>Miscarriage
+      </button>
+      <button class="tool" data-tool="top" title="Add termination of pregnancy (TOP)">
+        <svg viewBox="0 0 24 24"><path d="M12 6l7 12H5z" /><path d="M4 21L20 5" /></svg>Termination
+      </button>
+
+      <div class="rail-label">Link</div>
+      <button class="tool" data-tool="partner" title="Link partners (P)">
+        <svg viewBox="0 0 24 24"><rect x="2" y="8" width="7" height="7" /><circle cx="18.5" cy="11.5" r="3.8" /><path d="M9 11.5h5.7" /></svg>Partners
+      </button>
+      <button class="tool" data-tool="child" title="Link child to a couple (C)">
+        <svg viewBox="0 0 24 24"><rect x="2" y="2.5" width="6" height="6" /><circle cx="19" cy="5.5" r="3" /><path d="M8 5.5h8M12 5.5v9" /><rect x="9" y="14.5" width="6" height="6" /></svg>Child
+      </button>
+      <button class="tool" data-tool="sibling" title="Link siblings (S)">
+        <svg viewBox="0 0 24 24"><path d="M12 3v5M4 8h16M4 8v6M12 8v6M20 8v6" /><circle cx="4" cy="17" r="2.6" /><rect x="9.5" y="14.5" width="5" height="5" /><circle cx="20" cy="17" r="2.6" /></svg>Siblings
+      </button>
+      <button class="tool" data-tool="twin" title="Link twins (T)">
+        <svg viewBox="0 0 24 24"><path d="M12 3v5M12 8l-6 7M12 8l6 7M8.5 12h7" /><circle cx="5.5" cy="18" r="2.8" /><circle cx="18.5" cy="18" r="2.8" /></svg>Twins
+      </button>
+    </nav>
+
+    <!-- ============================== Canvas ============================== -->
+    <main class="stage" id="stage">
+      <canvas id="canvas" aria-label="Pedigree chart"></canvas>
+
+      <div class="hintbar">
+        <span id="hintText"></span>
+        <label id="partnerOpts" class="hint-opt" hidden>
+          Type
+          <select id="partnerKind">
+            <option value="marriage">Partners / marriage</option>
+            <option value="consanguineous">Consanguineous (double line)</option>
+            <option value="separated">Separated (single slash)</option>
+            <option value="divorced">Divorced (double slash)</option>
+          </select>
+        </label>
+        <label id="twinOpts" class="hint-opt" hidden>
+          Zygosity
+          <select id="twinZyg">
+            <option value="dz">Dizygotic (fraternal)</option>
+            <option value="mz">Monozygotic (identical)</option>
+            <option value="unknown">Unknown zygosity</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="zoombar">
+        <button id="zoomOut" type="button" title="Zoom out (−)">−</button>
+        <button id="zoomLabel" type="button" title="Reset to 100%">100%</button>
+        <button id="zoomIn" type="button" title="Zoom in (+)">+</button>
+        <button id="zoomFit" type="button" title="Fit pedigree to screen (0)">Fit</button>
+      </div>
+
+      <div id="emptyState" class="empty-state" hidden>
+        <div class="empty-card">
+          <h3>Start a pedigree</h3>
+          <p>Begin with the proband (the individual who brought the family to medical attention),
+             then build the family out from the panel on the right.</p>
+          <div class="empty-actions">
+            <button type="button" data-start="M" class="primary">Male proband</button>
+            <button type="button" data-start="F" class="primary">Female proband</button>
+          </div>
+          <p class="muted small">Or pick a symbol from the left toolbar and click on the canvas.</p>
+        </div>
+      </div>
+
+      <div id="toast" role="status" aria-live="polite"></div>
+    </main>
+
+    <!-- ============================== Sidebar ============================== -->
+    <aside class="sidebar">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Conditions</h2>
+          <button id="addDiseaseBtn" type="button" class="btn-ghost small">+ Add condition</button>
+        </div>
+        <p class="panel-sub">Each condition gets a color. Affected individuals are shaded in that color; carriers get a centered dot.</p>
+        <ul id="diseaseList" class="disease-list"></ul>
+      </section>
+
+      <section class="panel grow">
+        <!-- Nothing selected -->
+        <div id="noSel" class="no-sel">
+          <h2>Selection</h2>
+          <p class="panel-sub">Select an individual or relationship line to edit it.</p>
+          <ul class="tips">
+            <li><b>Build fast:</b> select a person and use <em>Add relative</em>.</li>
+            <li><b>Move:</b> drag a symbol. Drag a couple's line to move both partners. Hold <kbd>Shift</kbd> to move freely.</li>
+            <li><b>Pan / zoom:</b> drag empty space, or hold <kbd>Space</kbd>; scroll to zoom.</li>
+            <li><b>Notes:</b> double-click a symbol to jump to its clinical notes.</li>
+          </ul>
+          <h2 class="mt">Shortcuts</h2>
+          <dl class="shortcuts">
+            <dt><kbd>V</kbd></dt><dd>Select</dd>
+            <dt><kbd>M</kbd> <kbd>F</kbd> <kbd>U</kbd></dt><dd>Male / female / unknown</dd>
+            <dt><kbd>P</kbd> <kbd>C</kbd></dt><dd>Partners / child</dd>
+            <dt><kbd>S</kbd> <kbd>T</kbd></dt><dd>Siblings / twins</dd>
+            <dt><kbd>Del</kbd></dt><dd>Delete selection</dd>
+            <dt><kbd>⌘/Ctrl Z</kbd></dt><dd>Undo</dd>
+            <dt><kbd>0</kbd></dt><dd>Fit to screen</dd>
+            <dt><kbd>Esc</kbd></dt><dd>Cancel</dd>
+          </dl>
+        </div>
+
+        <!-- Individual -->
+        <div id="personForm" hidden>
+          <div class="form-head">
+            <h2 id="pTitle">Individual</h2>
+            <span id="pId" class="badge"></span>
+          </div>
+
+          <label class="field">
+            <span>Name / identifier</span>
+            <input id="pLabel" data-hist type="text" placeholder="e.g. John D.">
+          </label>
+          <label class="field">
+            <span>Age / dates</span>
+            <input id="pAge" data-hist type="text" placeholder="e.g. 42 y · b. 1983 · d. 67 y">
+          </label>
+
+          <div class="field">
+            <span>Sex</span>
+            <div class="seg" id="pSex">
+              <button type="button" data-sex="M">Male</button>
+              <button type="button" data-sex="F">Female</button>
+              <button type="button" data-sex="U">Unknown</button>
+            </div>
+          </div>
+
+          <label class="field">
+            <span>Birth status / pregnancy outcome</span>
+            <select id="pOutcome">
+              <option value="">Live born</option>
+              <option value="P">Pregnancy — ongoing (P)</option>
+              <option value="SB">Stillbirth (SB)</option>
+              <option value="SAB">Spontaneous abortion / miscarriage (SAB)</option>
+              <option value="TOP">Termination of pregnancy (TOP)</option>
+            </select>
+          </label>
+
+          <label class="field" id="pGestRow" hidden>
+            <span>Gestational age <em class="muted" id="pGestHint"></em></span>
+            <input id="pGest" data-hist type="text" placeholder="e.g. 20 wk">
+          </label>
+
+          <div class="row-checks">
+            <label class="check" id="pDeceasedWrap"><input id="pDeceased" type="checkbox"> Deceased</label>
+            <label class="check"><input id="pProband" type="checkbox"> Proband</label>
+          </div>
+
+          <div class="field">
+            <span>Clinical status</span>
+            <div id="pConditions" class="cond-list"></div>
+          </div>
+
+          <div class="field" id="pTwinRow" hidden>
+            <span>Twin zygosity</span>
+            <div class="inline">
+              <select id="pTwinZyg">
+                <option value="dz">Dizygotic (fraternal)</option>
+                <option value="mz">Monozygotic (identical)</option>
+                <option value="unknown">Unknown zygosity</option>
+              </select>
+              <button id="pUntwin" type="button" class="btn-ghost small">Unlink twin</button>
+            </div>
+          </div>
+
+          <label class="field">
+            <span>Clinical notes <em class="muted">(shown under the symbol)</em></span>
+            <textarea id="pNotes" data-hist rows="4" placeholder="Diagnosis, age at onset, genetic test results…"></textarea>
+          </label>
+
+          <div class="field">
+            <span>Add relative</span>
+            <div class="quick-grid" id="quickAdd">
+              <button type="button" data-add="parents">Parents</button>
+              <button type="button" data-add="partner">Partner</button>
+              <button type="button" data-add="twin">Twin</button>
+              <button type="button" data-add="son">Son</button>
+              <button type="button" data-add="daughter">Daughter</button>
+              <button type="button" data-add="child">Child (?)</button>
+              <button type="button" data-add="brother">Brother</button>
+              <button type="button" data-add="sister">Sister</button>
+              <button type="button" data-add="sibling">Sibling (?)</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <span>Add pregnancy / loss <em class="muted">(with this person's partner)</em></span>
+            <div class="quick-grid four" id="quickPreg">
+              <button type="button" data-add="pregnancy" title="Ongoing pregnancy">Pregnancy</button>
+              <button type="button" data-add="stillbirth" title="Stillbirth (SB)">Stillbirth</button>
+              <button type="button" data-add="sab" title="Spontaneous abortion / miscarriage (SAB)">SAB</button>
+              <button type="button" data-add="top" title="Termination of pregnancy (TOP)">TOP</button>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button id="pDetach" type="button" class="btn-ghost">Detach from parents</button>
+            <button id="pDelete" type="button" class="btn-danger">Delete individual</button>
+          </div>
+        </div>
+
+        <!-- Relationship -->
+        <div id="unionForm" hidden>
+          <div class="form-head"><h2 id="uTitle">Relationship</h2></div>
+          <p id="uDesc" class="panel-sub"></p>
+
+          <label class="field" id="uKindRow">
+            <span>Relationship type</span>
+            <select id="uKind">
+              <option value="marriage">Partners / marriage</option>
+              <option value="consanguineous">Consanguineous (double line)</option>
+              <option value="separated">Separated (single slash)</option>
+              <option value="divorced">Divorced (double slash)</option>
+            </select>
+          </label>
+
+          <div class="field">
+            <span>Add child</span>
+            <div class="quick-grid" id="uAdd">
+              <button type="button" data-uadd="M">Son</button>
+              <button type="button" data-uadd="F">Daughter</button>
+              <button type="button" data-uadd="U">Unknown sex</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <span>Add pregnancy / loss</span>
+            <div class="quick-grid four" id="uAddPreg">
+              <button type="button" data-uadd="U" data-outcome="P" title="Ongoing pregnancy">Pregnancy</button>
+              <button type="button" data-uadd="U" data-outcome="SB" title="Stillbirth (SB)">Stillbirth</button>
+              <button type="button" data-uadd="U" data-outcome="SAB" title="Spontaneous abortion / miscarriage (SAB)">SAB</button>
+              <button type="button" data-uadd="U" data-outcome="TOP" title="Termination of pregnancy (TOP)">TOP</button>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button id="uParents" type="button" class="btn-ghost">Add parents</button>
+            <button id="uDelete" type="button" class="btn-danger">Delete relationship</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Display</h2>
+        <label class="check"><input id="optIds" type="checkbox"> Generation &amp; individual numbers</label>
+        <label class="check"><input id="optNotes" type="checkbox"> Clinical notes under symbols</label>
+        <label class="check"><input id="optGrid" type="checkbox"> Generation guide lines <em class="muted">(not exported)</em></label>
+      </section>
+    </aside>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
